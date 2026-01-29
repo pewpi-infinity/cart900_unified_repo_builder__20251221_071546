@@ -35,8 +35,8 @@ input[type=range]{width:min(560px,92vw)}
 <body>
 
 <h1>Φ Phi Singer</h1>
-<p>Golden Ratio digits → sound. Android-safe audio engine.  
-Tempo and volume are now **actually wired**.</p>
+<p>Golden Ratio digits → notes.  
+Android-safe audio. Tempo and volume are live.</p>
 
 <div class="row">
   <button id="play">▶ Play Φ</button>
@@ -64,13 +64,19 @@ const phi =
 /* digit → frequency */
 const scale=[261.63,293.66,329.63,349.23,392,440,493.88,523.25,587.33,659.25];
 
-let ctx, osc, gain;
-let playing=false, stop=false;
+let ctx=null, osc=null, gain=null;
+let playing=false, stopFlag=false;
 
 const status=document.getElementById("status");
 const state=document.getElementById("state");
 
-/* helpers */
+const playBtn=document.getElementById("play");
+const stopBtn=document.getElementById("stop");
+const tempo=document.getElementById("tempo");
+const vol=document.getElementById("vol");
+const tempoVal=document.getElementById("tempoVal");
+const volVal=document.getElementById("volVal");
+
 const sleep = ms => new Promise(r=>setTimeout(r,ms));
 
 function setupAudio(){
@@ -92,7 +98,6 @@ async function resumeAudio(){
   state.textContent="AudioContext: "+ctx.state;
 }
 
-/* audible unlock */
 async function unlock(){
   const t=ctx.currentTime;
   osc.frequency.setValueAtTime(660,t);
@@ -104,28 +109,31 @@ async function unlock(){
 
 async function play(){
   if(playing) return;
-  playing=true; stop=false;
-  document.getElementById("play").disabled=true;
-  document.getElementById("stop").disabled=false;
+  playing=true; stopFlag=false;
+
+  playBtn.disabled=true;
+  stopBtn.disabled=false;
 
   setupAudio();
   await resumeAudio();
   if(ctx.state!=="running"){
-    status.textContent="Audio blocked";
-    playing=false; return;
+    status.textContent="Audio blocked by browser";
+    playing=false;
+    playBtn.disabled=false;
+    stopBtn.disabled=true;
+    return;
   }
 
   status.textContent="Unlocking…";
   await unlock();
-
   status.textContent="Playing φ…";
 
   for(let i=0;i<phi.length;i++){
-    if(stop) break;
+    if(stopFlag) break;
 
     const tempoMs=+tempo.value;
     const volPct=+vol.value;
-    const vol=Math.max(0.01,volPct/100);
+    const volume=Math.max(0.01,volPct/100);
 
     const d=phi.charCodeAt(i)-48;
     const freq=scale[d]||261.63;
@@ -135,7 +143,7 @@ async function play(){
 
     gain.gain.cancelScheduledValues(now);
     gain.gain.setValueAtTime(0.00001,now);
-    gain.gain.exponentialRampToValueAtTime(vol,now+0.01);
+    gain.gain.exponentialRampToValueAtTime(volume,now+0.01);
     gain.gain.exponentialRampToValueAtTime(
       0.00001,
       now+(tempoMs/1000)*0.9
@@ -144,23 +152,23 @@ async function play(){
     await sleep(tempoMs);
   }
 
-  status.textContent=stop?"Stopped.":"Finished.";
+  status.textContent=stopFlag?"Stopped.":"Finished.";
   playing=false;
-  document.getElementById("play").disabled=false;
-  document.getElementById("stop").disabled=true;
+  playBtn.disabled=false;
+  stopBtn.disabled=true;
 }
 
 function stopPlay(){
-  stop=true;
+  stopFlag=true;
   status.textContent="Stopping…";
 }
 
-/* UI */
+/* UI wiring — this is the part that was broken before */
 playBtn.addEventListener("pointerdown",e=>{e.preventDefault();play()});
 stopBtn.addEventListener("pointerdown",e=>{e.preventDefault();stopPlay()});
 
-tempo.oninput=()=>tempoVal.textContent=tempo.value;
-vol.oninput=()=>volVal.textContent=vol.value;
+tempo.addEventListener("input",()=>tempoVal.textContent=tempo.value);
+vol.addEventListener("input",()=>volVal.textContent=vol.value);
 </script>
 
 </body>
