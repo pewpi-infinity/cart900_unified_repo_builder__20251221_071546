@@ -1,143 +1,241 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>Phi Singer — Golden Ratio Sonification</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<style>
-  body {
-    background: #0e0e11;
-    color: #f2f2f2;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-    text-align: center;
-    padding: 40px;
-  }
-  h1 {
-    font-weight: 600;
-    margin-bottom: 10px;
-  }
-  p {
-    opacity: 0.85;
-    max-width: 520px;
-    margin: 0 auto 25px;
-  }
-  button {
-    font-size: 18px;
-    padding: 12px 24px;
-    border-radius: 10px;
-    border: none;
-    cursor: pointer;
-    background: linear-gradient(135deg, #d4af37, #f5d76e);
-    color: #000;
-    font-weight: 600;
-  }
-  button:active {
-    transform: scale(0.98);
-  }
-  .status {
-    margin-top: 18px;
-    opacity: 0.7;
-    font-size: 14px;
-  }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Φ Phi Singer — Golden Ratio Sonification</title>
+  <style>
+    body{background:#0e0e11;color:#f2f2f2;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;text-align:center;padding:32px}
+    h1{margin:0 0 10px;font-weight:700}
+    p{opacity:.85;max-width:720px;margin:0 auto 18px;line-height:1.35}
+    button{font-size:18px;padding:12px 20px;border-radius:12px;border:0;cursor:pointer;
+      background:linear-gradient(135deg,#d4af37,#f5d76e);color:#000;font-weight:700}
+    button:disabled{opacity:.55;cursor:not-allowed}
+    .row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+    .card{background:#15151a;border:1px solid #24242b;border-radius:14px;padding:14px;max-width:780px;margin:16px auto 0}
+    .status{opacity:.75;font-size:14px;margin-top:10px;word-break:break-word}
+    label{display:block;opacity:.85;margin:8px 0 6px}
+    input[type="range"]{width:min(520px,92vw)}
+    .mini{opacity:.7;font-size:12px;margin-top:8px}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12px;opacity:.8}
+  </style>
 </head>
-
 <body>
 
-<h1>Φ Phi Singer</h1>
-<p>
-Hear the Golden Ratio the same way π is heard in Pi Singer.<br>
-Pure number → pure tone → infinite structure.
-</p>
+  <h1>Φ Phi Singer</h1>
+  <p>Golden Ratio digits → notes (Pi Singer style). Built for mobile audio policies (unlock + async resume).</p>
 
-<button id="playBtn">▶ Play Φ</button>
-<div class="status" id="status">Ready</div>
+  <div class="row">
+    <button id="playBtn">▶ Play Φ</button>
+    <button id="stopBtn" disabled>⏹ Stop</button>
+  </div>
+
+  <div class="card">
+    <label for="tempo">Tempo (ms per note)</label>
+    <input id="tempo" type="range" min="80" max="600" value="260" />
+    <div class="mini"><span id="tempoVal">260</span> ms per note</div>
+
+    <label for="gain">Volume</label>
+    <input id="gain" type="range" min="1" max="100" value="18" />
+    <div class="mini"><span id="gainVal">18</span>%</div>
+
+    <div class="status" id="status">Ready.</div>
+    <div class="mini mono" id="debugLine"></div>
+  </div>
 
 <script>
-/* -------------------------------------------------
-   Golden Ratio digits (φ)
-   ------------------------------------------------- */
-const phiDigits =
-`161803398874989484820458683436563811772030917980576286213544862270526046281890244970720720418939113748475408807538689175212663386222353693179318006076672635443338908659593958290563832266131992829026788067520876689250171169620703222104321626954862629631361443814975870122034080588795445474924618569536486444924104432077134494704956584678850987433944221254487706647809158846074998871240076521705751797883416625624940758906970400028121042762177111777805315317141011704666599146697987317613560067087480710131795236894275219484353056783002287856997829778347845878228911097625003026961561700250464338243776486102838312683303724292675263116533924731671112115881863851331620384005222165791286675294654906811317159934323597349498509040947621322298101726107059611645629909816290555208524790352406020172799747175342777592778625619432082750513121815628551222480939471234145170223735805772786160086883829523045926478780178899219902707769038953219681986151437803149974110692608867429622675756052317277752035361393621076738937645560606059216589466759551900400555908953123239040361645428778836896907335227310642563078566721488969366986844
+/* =========================================================
+   Φ digits (Golden Ratio). Long enough to hear structure.
+   ========================================================= */
+const phiDigits = (
+  "1618033988749894848204586834365638117720309179805762862135448622705260462818902449707207204189391137" +
+  "4847540880753868917521266338622235369317931800607667263544333890865959" +
+  "3958290563832266131992829026788067520876689250171169620703222104321626" +
+  "9548626296313614438149758701220340805887954454749246185695364864449241" +
+  "0443207713404947049565846788509874339442212544877066478091588460749988" +
+  "7124007652170575179788341662562494075890697040002812104276217711177780"
+);
 
-/* -------------------------------------------------
-   Digit → frequency mapping (Pi Singer style)
-   ------------------------------------------------- */
+/* =========================================================
+   Digit -> frequency mapping (simple Pi Singer-like scale)
+   0..6 = C D E F G A B, 7..9 = C+ D+ E+
+   ========================================================= */
 const scale = [
-  261.63, // 0 C
-  293.66, // 1 D
-  329.63, // 2 E
-  349.23, // 3 F
-  392.00, // 4 G
-  440.00, // 5 A
-  493.88, // 6 B
-  523.25, // 7 C+
-  587.33, // 8 D+
-  659.25  // 9 E+
+  261.63, // 0 C4
+  293.66, // 1 D4
+  329.63, // 2 E4
+  349.23, // 3 F4
+  392.00, // 4 G4
+  440.00, // 5 A4
+  493.88, // 6 B4
+  523.25, // 7 C5
+  587.33, // 8 D5
+  659.25  // 9 E5
 ];
 
-/* -------------------------------------------------
-   Audio Engine
-   ------------------------------------------------- */
-let ctx;
-let isPlaying = false;
+let ctx = null;
+let masterGain = null;
+let stopRequested = false;
+let playing = false;
 
-function initAudio() {
+/* =========================================================
+   Audio: create context ONLY inside a user gesture.
+   ========================================================= */
+function ensureAudioGraph() {
   if (!ctx) {
     ctx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = ctx.createGain();
+    masterGain.gain.value = 0.18;
+    masterGain.connect(ctx.destination);
   }
 }
 
-function playTone(freq, start) {
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-
-  osc.type = "sine";
-  osc.frequency.value = freq;
-
-  gain.gain.setValueAtTime(0.0001, start);
-  gain.gain.exponentialRampToValueAtTime(0.15, start + 0.02);
-  gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.26);
-
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-
-  osc.start(start);
-  osc.stop(start + 0.28);
-}
-
-/* -------------------------------------------------
-   Play Φ
-   ------------------------------------------------- async function playPhi() {
-  if (isPlaying) return;
-  isPlaying = true;
-
-  document.getElementById("status").textContent = "Playing φ…";
-
-  initAudio();
-
-  // 🔑 CRITICAL FIX FOR MOBILE
+/* =========================================================
+   Mobile "unlock": play an inaudible tick so the audio path opens.
+   (This is a common workaround on mobile browsers.)
+   ========================================================= */
+async function unlockAudio() {
+  // Resume if suspended (mobile often starts suspended)
   if (ctx.state === "suspended") {
     await ctx.resume();
   }
 
-  let t = ctx.currentTime + 0.05;
+  // In some mobile cases, resume isn't enough; do a tiny silent tick.
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  gain.gain.value = 0.00001; // essentially silent
+  osc.frequency.value = 440;
+  osc.connect(gain);
+  gain.connect(masterGain);
 
-  for (const digit of phiDigits) {
-    playTone(scale[Number(digit)], t);
-    t += 0.30;
-  }
+  const t = ctx.currentTime;
+  osc.start(t);
+  osc.stop(t + 0.02);
 
-  setTimeout(() => {
-    isPlaying = false;
-    document.getElementById("status").textContent = "Finished";
-  }, phiDigits.length * 300);
+  // Give the browser a moment to settle
+  await new Promise(r => setTimeout(r, 20));
 }
- -------------------------------------------------
-   UI
-   ------------------------------------------------- */
-document.getElementById("playBtn").addEventListener("click", playPhi);
+
+/* =========================================================
+   Note player
+   ========================================================= */
+function playTone(freq, startTime, durSec, vol) {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(freq, startTime);
+
+  const attack = 0.012;
+  const release = Math.max(0.02, durSec * 0.22);
+  const peak = vol;
+
+  gain.gain.setValueAtTime(0.0001, startTime);
+  gain.gain.exponentialRampToValueAtTime(peak, startTime + attack);
+  gain.gain.exponentialRampToValueAtTime(0.0001, startTime + durSec - release);
+
+  osc.connect(gain);
+  gain.connect(masterGain);
+
+  osc.start(startTime);
+  osc.stop(startTime + durSec);
+}
+
+/* =========================================================
+   Main play routine (async, mobile-safe)
+   ========================================================= */
+async function playPhi() {
+  if (playing) return;
+  playing = true;
+  stopRequested = false;
+
+  const playBtn = document.getElementById("playBtn");
+  const stopBtn = document.getElementById("stopBtn");
+  const status = document.getElementById("status");
+  const debugLine = document.getElementById("debugLine");
+
+  playBtn.disabled = true;
+  stopBtn.disabled = false;
+
+  status.textContent = "Starting audio…";
+  debugLine.textContent = "";
+
+  try {
+    // Critical: create + resume inside gesture
+    ensureAudioGraph();
+    await unlockAudio();
+
+    // Show state (no devtools needed)
+    debugLine.textContent = `AudioContext: ${ctx.state}`;
+
+    const tempoMs = Number(document.getElementById("tempo").value);
+    const durSec = Math.max(0.06, (tempoMs / 1000) * 0.88);
+
+    const volPct = Number(document.getElementById("gain").value);
+    const vol = Math.max(0.005, Math.min(0.35, volPct / 100)); // clamp
+
+    // Set master gain slightly below slider so it stays clean
+    masterGain.gain.value = Math.min(0.9, vol * 1.0);
+
+    status.textContent = "Playing φ…";
+
+    let t = ctx.currentTime + 0.04;
+    const step = tempoMs / 1000;
+
+    for (let i = 0; i < phiDigits.length; i++) {
+      if (stopRequested) break;
+      const d = phiDigits.charCodeAt(i) - 48; // faster Number()
+      const freq = scale[d] || 261.63;
+      playTone(freq, t, durSec, vol);
+      t += step;
+
+      // Yield sometimes so mobile UI doesn't freeze
+      if (i % 120 === 0) {
+        await new Promise(r => setTimeout(r, 0));
+      }
+    }
+
+    status.textContent = stopRequested ? "Stopped." : "Finished.";
+  } catch (err) {
+    status.textContent = "Audio failed to start on this device.";
+    debugLine.textContent = String(err && err.message ? err.message : err);
+  } finally {
+    playing = false;
+    document.getElementById("playBtn").disabled = false;
+    document.getElementById("stopBtn").disabled = true;
+  }
+}
+
+function stopPhi() {
+  stopRequested = true;
+  const status = document.getElementById("status");
+  status.textContent = "Stopping…";
+}
+
+/* =========================================================
+   UI wiring — use pointerdown for mobile reliability
+   ========================================================= */
+const playBtn = document.getElementById("playBtn");
+const stopBtn = document.getElementById("stopBtn");
+
+playBtn.addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  playPhi();
+});
+
+stopBtn.addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  stopPhi();
+});
+
+/* Slider labels */
+const tempo = document.getElementById("tempo");
+const tempoVal = document.getElementById("tempoVal");
+tempo.addEventListener("input", () => tempoVal.textContent = tempo.value);
+
+const gain = document.getElementById("gain");
+const gainVal = document.getElementById("gainVal");
+gain.addEventListener("input", () => gainVal.textContent = gain.value);
 </script>
 
 </body>
