@@ -109,13 +109,19 @@ function playTone(freq, start) {
 
 /* -------------------------------------------------
    Play Φ
-   ------------------------------------------------- */
-function playPhi() {
+   ------------------------------------------------- async function playPhi() {
   if (isPlaying) return;
   isPlaying = true;
+
   document.getElementById("status").textContent = "Playing φ…";
 
   initAudio();
+
+  // 🔑 CRITICAL FIX FOR MOBILE
+  if (ctx.state === "suspended") {
+    await ctx.resume();
+  }
+
   let t = ctx.currentTime + 0.05;
 
   for (const digit of phiDigits) {
@@ -128,8 +134,7 @@ function playPhi() {
     document.getElementById("status").textContent = "Finished";
   }, phiDigits.length * 300);
 }
-
-/* -------------------------------------------------
+ -------------------------------------------------
    UI
    ------------------------------------------------- */
 document.getElementById("playBtn").addEventListener("click", playPhi);
